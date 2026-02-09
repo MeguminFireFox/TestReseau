@@ -6,12 +6,11 @@ using System.Text;
 
 public class ChatTransport : MonoBehaviour
 {
-    [Header("Mode")]
-    public bool isServer;
-
-    [Header("Client UI")]
-    public TMP_Text chatText;
-    public TMP_InputField inputField;
+    [SerializeField] private bool isServer;
+    [SerializeField] private TMP_Text chatText;
+    [SerializeField] private TMP_InputField _textInputField;
+    [SerializeField] private GameObject _panelPseudo;
+    [SerializeField] private TMP_InputField _pseudoInputField;
 
     private NetworkDriver driver;
     private NativeList<NetworkConnection> connections;
@@ -19,17 +18,16 @@ public class ChatTransport : MonoBehaviour
 
     private bool isConnected = false;
     private bool canChoice = true;
+    private string pseudo = "NoName";
 
 
-    const ushort PORT = 7788;
+    const ushort PORT = 7777;
 
     public void Host()
     {
         if (!canChoice) return;
 
         driver = NetworkDriver.Create();
-
-        isServer = true;
 
         var endpoint = NetworkEndpoint.AnyIpv4;
         endpoint.Port = PORT;
@@ -40,11 +38,13 @@ public class ChatTransport : MonoBehaviour
             return;
         }
 
+        isServer = true;
         driver.Listen();
         connections = new NativeList<NetworkConnection>(16, Allocator.Persistent);
 
         Debug.Log("SERVEUR LANCÉ");
         canChoice = false;
+        _panelPseudo.SetActive(true);
     }
 
     public void Connect()
@@ -53,13 +53,30 @@ public class ChatTransport : MonoBehaviour
 
         driver = NetworkDriver.Create();
 
-        isServer = false;
-
         var endpoint = NetworkEndpoint.Parse("127.0.0.1", PORT);
+
+        if (driver.Connect(endpoint) != default)
+        {
+            Debug.LogError("Impossible de se connecter au serveur");
+            return;
+        }
+
         serverConnection = driver.Connect(endpoint);
+
+        isServer = false;
 
         Debug.Log("CLIENT CONNECTÉ");
         canChoice= false;
+        _panelPseudo.SetActive(true);
+    }
+
+    public void SetPseudo()
+    {
+        if (string.IsNullOrEmpty(_pseudoInputField.text))
+            return;
+        pseudo = _pseudoInputField.text;
+        _pseudoInputField.text = "";
+        _panelPseudo.SetActive(false);
     }
 
     void Update()
@@ -109,7 +126,7 @@ public class ChatTransport : MonoBehaviour
                     stream.ReadBytes(bytes);
 
                     string msg = Encoding.UTF8.GetString(bytes);
-                    Debug.Log("Reçu: " + msg);
+                    chatText.text += "\n" + msg;
 
                     Broadcast(msg);
                 }
@@ -167,16 +184,16 @@ public class ChatTransport : MonoBehaviour
 
     public void SendMessage()
     {
-        if (string.IsNullOrEmpty(inputField.text))
+        if (string.IsNullOrEmpty(_textInputField.text))
             return;
 
-        string msg = inputField.text;
+        string msg = pseudo + ":" +_textInputField.text;
         byte[] bytes = Encoding.UTF8.GetBytes(msg);
 
         if (isServer)
         {
             // Le serveur envoie à tous les clients
-            Broadcast("[Serveur] " + msg);
+            Broadcast(msg);
         }
         else
         {
@@ -195,8 +212,8 @@ public class ChatTransport : MonoBehaviour
             }
         }
 
-        chatText.text += "\nMoi: " + msg;
-        inputField.text = "";
+        chatText.text += "\n" + msg;
+        _textInputField.text = "";
     }
 
     void OnDestroy()

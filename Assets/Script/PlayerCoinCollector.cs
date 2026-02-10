@@ -4,24 +4,35 @@ using TMPro;
 
 public class PlayerCoinCollector : NetworkBehaviour
 {
-    [Header("Score Display")]
-    [SerializeField] private TMP_Text scoreText;
+    [SerializeField] private TMP_Text _scoreText;
 
-    private NetworkVariable<int> score = new NetworkVariable<int>(0);
+    private NetworkVariable<int> score = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    void Start()
+    public override void OnNetworkSpawn()
     {
-        // Mettre à jour le TextMeshPro dès le début
-        UpdateScoreText();
+        score.OnValueChanged += OnScoreChanged;
+        OnScoreChanged(0, score.Value);
+    }
+
+    private void OnScoreChanged(int oldValue, int newValue)
+    {
+        _scoreText.text = $"Score: {newValue}";
+    }
+
+    public void TakeDamage(int amount)
+    {
+        if (!IsServer) return;
+
+        score.Value = Mathf.Max(0, score.Value - amount);
+        GameEnd.Instance.CheckScore(score.Value, OwnerClientId);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!IsOwner) return; // Seul le propriétaire collecte
+        if (!IsOwner) return;
 
         if (other.CompareTag("Coin"))
         {
-            // On dit au serveur de gérer la collecte
             CollectCoinServerRpc(other.GetComponent<NetworkObject>().NetworkObjectId);
         }
     }
@@ -29,28 +40,12 @@ public class PlayerCoinCollector : NetworkBehaviour
     [ServerRpc]
     private void CollectCoinServerRpc(ulong coinNetworkId)
     {
-        // Récupérer l'objet NetworkObject correspondant
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(coinNetworkId, out NetworkObject coinObj))
         {
-            // Détruire le coin sur tous les clients
-            coinObj.Despawn(true);
+            PoolManager.Instance.ReturnToPool("CoinPool", coinObj);
         }
 
-        // Ajouter un point au joueur
         score.Value += 1;
-
-        // Mettre à jour le score sur tous les clients
-        UpdateScoreClientRpc(score.Value);
-    }
-
-    [ClientRpc]
-    private void UpdateScoreClientRpc(int newScore)
-    {
-        scoreText.text = $"Score: {newScore}";
-    }
-
-    private void UpdateScoreText()
-    {
-        scoreText.text = $"Score: {score.Value}";
+        GameEnd.Instance.CheckScore(score.Value, OwnerClientId);
     }
 }

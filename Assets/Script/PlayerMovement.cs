@@ -16,10 +16,17 @@ public class PlayerMovement : NetworkBehaviour
         float moveZ = 0f;
 
 #if ENABLE_INPUT_SYSTEM && NEW_INPUT_SYSTEM_INSTALLED
-        if (Keyboard.current.aKey.isPressed) moveX = -1f;
-        if (Keyboard.current.dKey.isPressed) moveX = 1f;
-        if (Keyboard.current.wKey.isPressed) moveZ = 1f;
-        if (Keyboard.current.sKey.isPressed) moveZ = -1f;
+        // New Input System
+        if (Keyboard.current.aKey.isPressed) moveX -= 1f;
+        if (Keyboard.current.dKey.isPressed) moveX += 1f;
+        if (Keyboard.current.wKey.isPressed) moveZ += 1f;
+        if (Keyboard.current.sKey.isPressed) moveZ -= 1f;
+#else
+        // Old Input System
+        if (Input.GetKey(KeyCode.A)) moveX -= 1f;
+        if (Input.GetKey(KeyCode.D)) moveX += 1f;
+        if (Input.GetKey(KeyCode.W)) moveZ += 1f;
+        if (Input.GetKey(KeyCode.S)) moveZ -= 1f;
 #endif
 
         Vector3 movement = new Vector3(moveX, 0f, moveZ).normalized;

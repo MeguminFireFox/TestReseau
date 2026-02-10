@@ -95,13 +95,11 @@ public class ClientChat : MonoBehaviour
 
     public void SendMessage()
     {
-        if (string.IsNullOrEmpty(_textInputField.text))
-            return;
+        if (string.IsNullOrEmpty(_textInputField.text)) return;
 
         string msg = pseudo + " : " + _textInputField.text;
         byte[] bytes = Encoding.UTF8.GetBytes(msg);
 
-        // Le client envoie au serveur
         if (!isConnected)
         {
             Debug.LogWarning("Serveur pas prêt");
@@ -122,8 +120,8 @@ public class ClientChat : MonoBehaviour
     {
         Canvas.ForceUpdateCanvases();
 
-        float preferredHeight = _chatText.preferredHeight;
-        _contentRect.sizeDelta = new Vector2(_contentRect.sizeDelta.x, _contentRect.rect.height + preferredHeight);
+        float height = _chatText.preferredHeight;
+        _contentRect.sizeDelta = new Vector2(_contentRect.sizeDelta.x, _contentRect.rect.height + height);
 
         _scrollbar.value = 0;
     }
